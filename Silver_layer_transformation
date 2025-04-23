@@ -1,0 +1,77 @@
+-- SILVER LAYER 
+-- Added a new meta data column(dwh_create_date) to track loading date
+
+CREATE TABLE silver_crm_cust_info (
+cst_id INT,
+cst_key VARCHAR(50),
+cst_firstname VARCHAR(50),
+cst_lastname VARCHAR(50),
+cst_martial_status VARCHAR(50),
+cst_gndr VARCHAR(20),
+cst_create_date DATE,
+dwh_create_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+)engine=InnoDB;
+
+CREATE TABLE silver_crm_prd_info (
+    prd_id       INT,
+    prd_key      NVARCHAR(50),
+    prd_nm       NVARCHAR(50),
+    prd_cost     INT,
+    prd_line     NVARCHAR(50),
+    prd_start_dt DATETIME,
+    prd_end_dt   DATETIME,
+    dwh_create_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+)engine=InnoDB;
+
+CREATE TABLE silver_crm_sales_details (
+    sls_ord_num  NVARCHAR(50),
+    sls_prd_key  NVARCHAR(50),
+    sls_cust_id  INT,
+    sls_order_dt INT,
+    sls_ship_dt  INT,
+    sls_due_dt   INT,
+    sls_sales    INT,
+    sls_quantity INT,
+    sls_price    INT,
+	dwh_create_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+)engine=InnoDB;
+
+CREATE TABLE silver_erp_loc_a101 (
+    cid    NVARCHAR(50),
+    cntry  NVARCHAR(50),
+	dwh_create_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+)engine=InnoDB;
+
+CREATE TABLE silver_erp_cust_az12 (
+    cid    NVARCHAR(50),
+    bdate  DATE,
+    gen    NVARCHAR(50),
+	dwh_create_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+)engine=InnoDB;
+
+CREATE TABLE silver_erp_px_cat_g1v2 (
+    id           NVARCHAR(50),
+    cat          NVARCHAR(50),
+    subcat       NVARCHAR(50),
+    maintenance  NVARCHAR(50),
+	dwh_create_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+)engine=InnoDB;
+
+-- TRANSFORMATION LAYER  from Bronze to Silver
+-- Check for Duplicates and Null
+
+select cst_id, count(*)
+FROM bronze_crm_cust_info
+GROUP BY cst_id
+having COUNT(*) > 1 or cst_id IS NULL;
+
+-- Check for Individyal Rows where it has duplicate values
+
+SELECT * FROM bronze_crm_cust_info
+where cst_id = "29433";
+
+-- Rank the results from latest to old using Windows Function 
+select * FROM (SELECT *, 
+ROW_NUMBER() OVER (PARTITION BY cst_id ORDER BY cst_create_date DESC) as flag_last
+from  bronze_crm_cust_info
+WHERE cst_id IS NOT NULL) As ranked WHERE ranked.flag_last = 1;
